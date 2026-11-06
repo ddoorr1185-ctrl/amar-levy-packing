@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Packing Amar-Levy</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Suez+One&family=Assistant:wght@400;600;700&display=swap">
+<style>
+/* Layout: one column; person switch, that person's bag allowances, bag filter, then category groups of checkable rows (qty + which bag). */
+:root{
+  --bg:#f3f6f4; --surface:#ffffff; --fg:#17231f; --muted:#5a6b65; --line:#d9e2de;
+  --jade:#0e6a5a; --jade-soft:#dcefe9; --lantern:#c8501e; --lantern-soft:#fbe6da;
+  --done:#9aa9a3; --warnbg:#fff3d6; --warn:#7a5300;
+  --display:'Suez One',Georgia,serif; --body:'Assistant',system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#101715; --surface:#17211e; --fg:#e4ece9; --muted:#97a8a2; --line:#2a3833;
+  --jade:#5ec7b1; --jade-soft:#173a33; --lantern:#f08a5d; --lantern-soft:#3d2216;
+  --done:#5f6e69; --warnbg:#33290f; --warn:#f0c870; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101715; --surface:#17211e; --fg:#e4ece9; --muted:#97a8a2; --line:#2a3833;
+  --jade:#5ec7b1; --jade-soft:#173a33; --lantern:#f08a5d; --lantern-soft:#3d2216;
+  --done:#5f6e69; --warnbg:#33290f; --warn:#f0c870; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-family:var(--display);font-weight:400;font-size:1.9rem;margin:0;line-height:1.15;text-wrap:balance}
+.sub{margin:4px 0 0;color:var(--muted)}
+.who{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:5px}
+.who button{font:inherit;font-weight:700;font-size:1.05rem;border:0;border-radius:9px;padding:10px 8px;background:transparent;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.who button small{font-weight:400;font-size:.8rem}
+.who button[aria-pressed="true"]{background:var(--jade);color:var(--surface)}
+.bags{display:flex;flex-wrap:wrap;gap:8px}
+.bag{display:flex;align-items:baseline;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.bag b{font-variant-numeric:tabular-nums}
+.bag span{color:var(--muted);font-size:.85rem}
+.tips{background:var(--warnbg);color:var(--warn);border-radius:10px;padding:10px 14px;font-size:.92rem}
+.tips ul{margin:0;padding-inline-start:18px;display:flex;flex-direction:column;gap:3px}
+.prog{display:flex;flex-direction:column;gap:6px}
+.prog .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.prog b{font-family:var(--display);font-weight:400;font-size:1.35rem;font-variant-numeric:tabular-nums}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--jade);transition:width .3s}
+.sync{font-size:.82rem;color:var(--muted)}
+.filters{display:flex;flex-wrap:wrap;gap:6px}
+.filters button{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:99px;padding:5px 12px;cursor:pointer}
+.filters button[aria-pressed="true"]{border-color:var(--jade);background:var(--jade-soft);color:var(--jade);font-weight:700}
+section.cat{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.cat h2{font-size:1rem;margin:0;padding:10px 14px;display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);font-weight:700}
+.cat h2 span{color:var(--muted);font-weight:400;font-variant-numeric:tabular-nums}
+.cat ul{list-style:none;margin:0;padding:0}
+.cat li+li{border-top:1px solid var(--line)}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:start;padding:10px 14px;cursor:pointer}
+.item input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--jade);cursor:pointer}
+.item .nm{min-width:0}
+.item .nm b{font-weight:600}
+.item .nt{display:block;color:var(--muted);font-size:.85rem}
+.item .meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.qty{font-weight:700;font-variant-numeric:tabular-nums;color:var(--lantern);background:var(--lantern-soft);border-radius:6px;padding:0 8px;white-space:nowrap;font-size:.92rem}
+.tag{font-size:.75rem;color:var(--muted);white-space:nowrap}
+.item.done .nm b,.item.done .nt{color:var(--done);text-decoration:line-through}
+.item.done .qty{opacity:.5}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.actions button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:9px;padding:8px 14px;cursor:pointer}
+.confirm{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--lantern-soft);border-radius:9px;padding:8px 12px}
+.confirm button.yes{background:var(--lantern);color:var(--surface);border-color:var(--lantern)}
+.foot{color:var(--muted);font-size:.85rem;margin:0}
+button:focus-visible,input:focus-visible{outline:2px solid var(--jade);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap" dir="rtl" lang="he">
+  <header>
+    <h1>רשימת אריזה לירח הדבש</h1>
+    <p class="sub">וייטנאם ופיליפינים, 11.11–30.12. הכמויות מחושבות לשבוע בערך, כי כביסה שם זולה ואפשר לכבס כל כמה ימים.</p>
+  </header>
+
+  <div class="who" role="group" aria-label="של מי הרשימה">
+    <button id="tab-maya" type="button" data-p="maya" aria-pressed="true">מאיה<small>מזוודה + טרולי + תיק גב</small></button>
+    <button id="tab-dor" type="button" data-p="dor" aria-pressed="false">דור<small>טרולי + תיק גב</small></button>
+  </div>
+
+  <div class="bags" id="bags"></div>
+  <div class="tips" id="tips"></div>
+
+  <div class="prog">
+    <div class="row"><b id="count">0 / 0</b><span class="sync" id="sync">טוען…</span></div>
+    <div class="bar"><i id="barfill"></i></div>
+  </div>
+
+  <div class="filters" id="filters" role="group" aria-label="סינון לפי תיק"></div>
+
+  <div id="list" style="display:flex;flex-direction:column;gap:12px"></div>
+
+  <div class="actions">
+    <button id="copy" type="button">העתקת הרשימה</button>
+    <button id="reset" type="button">איפוס הסימונים</button>
+  </div>
+  <div id="confirm" class="confirm" hidden>
+    <span id="confirm-text"></span>
+    <button id="reset-yes" class="yes" type="button">כן, לאפס</button>
+    <button id="reset-no" type="button">ביטול</button>
+  </div>
+  <p class="foot">הכמויות הן המלצה ואפשר לשנות אותן. כל סימון נשמר ושניכם רואים אותו.</p>
+</div>
+
+<script>
+const BAGS = {S:'מזוודה', T:'טרולי', B:'תיק גב', W:'לובשים בטיסה'};
+const PEOPLE = {
+ maya:{
+  bags:[['20 ק"ג','מזוודה לבטן'],['7 ק"ג','טרולי 56×36×23'],['קטן','תיק גב']],
+  tips:[
+   'כל המסמכים של שניכם אצל מאיה, בתיק הגב.',
+   'נוזלים מעל 100 מ"ל, קרם הגנה ודוחה יתושים נכנסים למזוודה. בתיק היד מותרים רק בקבוקונים עד 100 מ"ל בשקית שקופה.',
+   'מטען נייד רק בתיק היד, אף פעם לא במזוודה.',
+   'כדאי לשים בטרולי סט בגדים אחד, למקרה שהמזוודה מתעכבת.'
+  ],
+  cats:[
+   ['מסמכים וכסף (לשניכם)',[
+    ['m1','דרכונים','2','B','דור + מאיה, תוקף 6 חודשים לפחות'],
+    ['m2','ויזה אלקטרונית לוייטנאם, מודפסת','2','B','אחת לכל אחד, תקפה 11.11–12.12'],
+    ['m3','קובץ הטיול המודפס (טיסות + מלונות)','1','B'],
+    ['m4','צילום דרכונים מודפס','2','S','עותק נוסף שמור גם בטלפון'],
+    ['m5','פוליסת ביטוח נסיעות','2','B','אחת לכל אחד, דיגיטלית + מודפסת'],
+    ['m6','כרטיסי אשראי','2','B','לשמור בנפרד מהכרטיס שאצל דור'],
+    ['m7','דולרים במזומן, שטרות חדשים','$300','B','ההמרה בוייטנאם הכי טובה בשטרות של $100 חדשים'],
+    ['m8','רישיון נהיגה ישראלי + בינלאומי','2','B','למי שנוהג קטנוע (למשל בהא ג\'יאנג)'],
+    ['m9','eSIM לוייטנאם ולפיליפינים','2','B','להתקין בבית, להפעיל בנחיתה'],
+    ['m10','רישום eTravel לפיליפינים','2','B','באתר הרשמי, עד 72 שעות לפני הטיסה של 28.11'],
+    ['m11','עט לטפסים בשדה','1','B']
+   ]],
+   ['בגדים',[
+    ['m12','חולצות קצרות / גופיות','7','S'],
+    ['m13','חולצה ארוכה דקה','2','S','לשמש, ליתושים ולמקדשים'],
+    ['m14','סוודר או פליז','1','W','לטיסה ולערבים בסאפה'],
+    ['m15','מעיל פוך דק מתקפל','1','T','סאפה והא ג\'יאנג קרים בלילה, 5–10 מעלות'],
+    ['m16','מעיל גשם דק','1','T','בהוי אן בנובמבר יש עונת גשמים'],
+    ['m17','מכנסיים ארוכים קלים','2','S','אחד מהם בטיסה'],
+    ['m18','טייץ תרמי או מכנס חם','1','S'],
+    ['m19','שורטים','3','S'],
+    ['m20','שמלות או חצאיות קיץ','3','S'],
+    ['m21','שמלה לערב (ירח דבש)','2','S'],
+    ['m22','בגדי ים','3','S'],
+    ['m23','פריאו / צעיף גדול','1','T','לחוף ולכיסוי כתפיים במקדשים'],
+    ['m24','תחתונים','10','S'],
+    ['m25','חזיות','3','S'],
+    ['m26','גרביים (2 זוגות חמים)','5','S'],
+    ['m27','פיג\'מה','2','S'],
+    ['m28','סט בגדים להחלפה','1','T','למקרה שהמזוודה מתעכבת']
+   ]],
+   ['נעליים ותיקים',[
+    ['m29','סניקרס / נעלי הליכה','1','W'],
+    ['m30','סנדלי שורש','1','S'],
+    ['m31','כפכפים','1','S'],
+    ['m32','סנדל לערב','1','S'],
+    ['m33','תיק קטן ליום','1','B'],
+    ['m34','תיק ערב קטן','1','S'],
+    ['m35','שקית שופינג מתקפלת','2','S'],
+    ['m36','תיק עמיד למים 10 ל\'','1','S','לשייט באל נידו וקורון, לשניכם'],
+    ['m37','שקית לכביסה','1','S'],
+    ['m38','שקיות ziplock','5','S'],
+    ['m39','מנעול קטן למזוודה','1','S'],
+    ['m40','משקפי שמש','1','B'],
+    ['m41','כובע','1','S']
+   ]],
+   ['בגדי ספורט',[
+    ['m42','טייץ','1','S'],
+    ['m43','חולצות אימון','2','S'],
+    ['m44','חזיות ספורט','2','S']
+   ]],
+   ['טיפוח והיגיינה (חלק משותף לשניכם)',[
+    ['m45','תיק רחצה','1','S'],
+    ['m46','מברשת שיניים','1','S'],
+    ['m47','משחת שיניים גדולה, לשניכם','1','S'],
+    ['m48','דאודורנט','1','S'],
+    ['m49','שמפו + מרכך','1+1','S','בגודל טיולים, אפשר לקנות עוד שם'],
+    ['m50','סבון פנים','1','S'],
+    ['m51','קרם לחות','1','S'],
+    ['m52','קרם הגנה SPF50 ידידותי לשונית','2','S','לשניכם; בפיליפינים הוא יקר'],
+    ['m53','ג\'ל אלוורה לאחרי שמש','1','S'],
+    ['m54','דוחה יתושים עם DEET','2','S','לשניכם, נגד דנגי'],
+    ['m55','שפתון עם SPF','1','B'],
+    ['m56','איפור','1','S','תיק אחד'],
+    ['m57','מברשת שיער + גומיות','1','S'],
+    ['m58','מוצרי שיער','1','S'],
+    ['m59','בושם קטן','1','S'],
+    ['m60','טמפונים ותחבושות','לשני מחזורים','S','קשה למצוא טמפונים בוייטנאם ובפיליפינים'],
+    ['m61','גוזז ציפורניים + פינצטה','1+1','S','לשניכם'],
+    ['m62','מגבת מיקרופייבר','1','S'],
+    ['m63','מגבונים לחים','2','B'],
+    ['m64','ג\'ל לחיטוי ידיים','1','B'],
+    ['m65','עדשות / משקפיים','לפי הצורך','B'],
+    ['m66','שקית שקופה לנוזלים עד 100 מ"ל','1','T']
+   ]],
+   ['תרופות (ערכה משותפת)',[
+    ['m67','תרופות קבועות','ל-50 יום + עודף','B','בתיק היד, באריזה המקורית'],
+    ['m68','אקמול / אדוויל','1+1','S'],
+    ['m69','אימודיום','1','S'],
+    ['m70','מלחי החזרת נוזלים','6','S'],
+    ['m71','אנטיהיסטמין (עקיצות, אלרגיה)','1','S'],
+    ['m72','כדורים נגד בחילה','1','S','לדרכים בצפון וויאטנם ולסירות'],
+    ['m73','פלסטרים + משחה אנטיביוטית','1+1','S'],
+    ['m74','אנטיביוטיקה לפי מרשם','1','S','כדאי לשאול רופא משפחה'],
+    ['m75','אמצעי מניעה','לכל התקופה','S']
+   ]],
+   ['אלקטרוניקה',[
+    ['m76','טלפון + כבל + מטען','1','B'],
+    ['m77','אוזניות','1','B'],
+    ['m78','מטען נייד','1','B','רק בתיק היד'],
+    ['m79','מתאם חשמל אוניברסלי','2','S','לשניכם, תקע ישראלי לא נכנס בפיליפינים'],
+    ['m80','מטען USB עם כמה יציאות','1','S','שקע אחד לכל הטלפונים'],
+    ['m81','כיסוי עמיד למים לטלפון','2','S','לשניכם, לסירות'],
+    ['m82','שעון חכם + מטען','לפי הצורך','B']
+   ]],
+   ['תיק יד לטיסה',[
+    ['m83','בקבוק מים ריק','1','B','למלא אחרי הבידוק'],
+    ['m84','חטיפים','2','B','טיסה של כ-11 שעות עם עצירה'],
+    ['m85','כרית צוואר','1','B'],
+    ['m86','מסכת עיניים + אטמי אוזניים','1','B']
+   ]]
+  ]
+ },
+ dor:{
+  bags:[['7 ק"ג','טרולי 56×36×23'],['קטן','תיק גב'],['20 ק"ג','מזוודה לבטן מ-24.11']],
+  tips:[
+   'בטיסה הלוך אין לך מזוודה לבטן. כל הציוד שלך צריך להיכנס בטרולי עד 7 ק"ג ובתיק גב קטן.',
+   'מטיסת וייטג\'ט ב-24.11 יש לך 20 ק"ג לבטן, וגם בכל טיסות סבו פסיפיק. כדאי לקנות מזוודה בהאנוי לפני 24.11.',
+   'הבגדים הישנים ייזרקו בדרך. מעיל חם זול אפשר לקנות בהאנוי לפני הא ג\'יאנג (14.11), וחליפה או חולצת ערב אפשר לתפור בהוי אן (24–27.11).',
+   'כל המסמכים אצל מאיה. אצלך נשאר רק כרטיס אשראי אחד לגיבוי וקצת מזומן.'
+  ],
+  cats:[
+   ['כסף (המסמכים אצל מאיה)',[
+    ['d1','כרטיס אשראי לגיבוי','1','B','בנפרד מהכרטיסים של מאיה'],
+    ['d2','דולרים במזומן','$100','B'],
+    ['d3','צילום דרכון וויזה בטלפון','1','B']
+   ]],
+   ['בגדים (ישנים, לזרוק בדרך)',[
+    ['d4','חולצות טי ישנות','5','T'],
+    ['d5','חולצה ארוכה דקה','1','T'],
+    ['d6','סוודר או פליז','1','W','לטיסה ולערבים הראשונים'],
+    ['d7','מכנס ארוך','2','W','אחד עליך בטיסה'],
+    ['d8','שורטים','2','T'],
+    ['d9','בגד ים','1','T','עוד אחד אפשר לקנות שם'],
+    ['d10','תחתונים','7','T'],
+    ['d11','גרביים','4','T'],
+    ['d12','בגד לשינה','1','T'],
+    ['d13','חולצה מכופתרת לערב','1','T','או לתפור בהוי אן']
+   ]],
+   ['נעליים ואביזרים',[
+    ['d14','סניקרס','1','W'],
+    ['d15','כפכפים','1','T','או לקנות שם'],
+    ['d16','משקפי שמש','1','B'],
+    ['d17','כובע','1','T'],
+    ['d18','תיק מתקפל לשופינג','1','B']
+   ]],
+   ['טיפוח (השאר אצל מאיה)',[
+    ['d19','מברשת שיניים + משחה קטנה','1+1','T'],
+    ['d20','דאודורנט סטיק','1','T'],
+    ['d21','מכונת גילוח או סכינים','1','T'],
+    ['d22','מגבת מיקרופייבר','1','T'],
+    ['d23','שקית שקופה לנוזלים עד 100 מ"ל','1','T']
+   ]],
+   ['אלקטרוניקה',[
+    ['d24','טלפון + כבל + מטען','1','B'],
+    ['d25','אוזניות','1','B'],
+    ['d26','מטען נייד','1','B','רק בתיק היד'],
+    ['d27','מצלמת אקסטרים (אם יש)','1','B','לשנורקלינג בקורון ואל נידו']
+   ]],
+   ['תיק יד לטיסה',[
+    ['d28','תרופות אישיות','לפי הצורך','B'],
+    ['d29','בקבוק מים ריק','1','B'],
+    ['d30','חטיף','2','B'],
+    ['d31','כרית צוואר','1','B']
+   ]]
+  ]
+ }
+};
+
+let person = 'maya', filter = 'all', state = {}, db = null, saveLocal = true;
+const $ = id => document.getElementById(id);
+function lsGet(){ try{ return JSON.parse(localStorage.getItem('packing-state')||'{}'); }catch{ return {}; } }
+function lsSet(){ try{ localStorage.setItem('packing-state', JSON.stringify(state)); }catch{} }
+state = lsGet();
+
+function items(p){ return PEOPLE[p].cats.flatMap(c=>c[1]); }
+
+function render(){
+  const P = PEOPLE[person];
+  document.querySelectorAll('.who button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.p===person));
+  $('bags').innerHTML = '';
+  P.bags.forEach(([v,l])=>{ const d=document.createElement('div'); d.className='bag'; d.innerHTML='<b></b><span></span>'; d.children[0].textContent=v; d.children[1].textContent=l; $('bags').append(d); });
+  $('tips').innerHTML = '<ul></ul>';
+  P.tips.forEach(t=>{ const li=document.createElement('li'); li.textContent=t; $('tips').firstChild.append(li); });
+
+  const used = new Set(items(person).map(i=>i[3]));
+  $('filters').innerHTML='';
+  [['all','הכל'],...Object.entries(BAGS).filter(([k])=>used.has(k))].forEach(([k,l])=>{
+    const b=document.createElement('button'); b.type='button'; b.textContent=l; b.setAttribute('aria-pressed', filter===k);
+    b.onclick=()=>{ filter=k; render(); }; $('filters').append(b);
+  });
+  if(filter!=='all' && !used.has(filter)) filter='all';
+
+  const list=$('list'); list.innerHTML='';
+  P.cats.forEach(([name,its])=>{
+    const shown = its.filter(i=>filter==='all'||i[3]===filter);
+    if(!shown.length) return;
+    const sec=document.createElement('section'); sec.className='cat';
+    const doneN = shown.filter(i=>state[i[0]]).length;
+    sec.innerHTML='<h2><span class="t"></span><span class="c"></span></h2><ul></ul>';
+    sec.querySelector('.t').textContent=name; sec.querySelector('.t').style.color='var(--fg)'; sec.querySelector('.t').style.fontWeight='700';
+    sec.querySelector('.c').textContent=doneN+'/'+shown.length;
+    shown.forEach(([id,nm,q,bag,note])=>{
+      const li=document.createElement('li');
+      li.innerHTML='<label class="item"><input type="checkbox"><span class="nm"><b></b><span class="nt"></span></span><span class="meta"><span class="qty"></span><span class="tag"></span></span></label>';
+      const cb=li.querySelector('input'); cb.id='cb-'+id; cb.checked=!!state[id];
+      li.querySelector('.item').classList.toggle('done', !!state[id]);
+      li.querySelector('b').textContent=nm;
+      const nt=li.querySelector('.nt'); if(note) nt.textContent=note; else nt.remove();
+      li.querySelector('.qty').textContent=/^\d+$/.test(q)?'×'+q:q;
+      li.querySelector('.tag').textContent=BAGS[bag];
+      cb.onchange=()=>toggle(id, cb.checked);
+      sec.querySelector('ul').append(li);
+    });
+    list.append(sec);
+  });
+  const all=items(person), d=all.filter(i=>state[i[0]]).length;
+  $('count').textContent=d+' / '+all.length+' נארזו';
+  $('barfill').style.width=(all.length?d/all.length*100:0)+'%';
+}
+
+async function toggle(id, val){
+  state[id]=val; render();
+  if(db){
+    try{ await db.collection('packed').doc(id).set({done:val}); }
+    catch(e){ $('sync').textContent='השמירה נכשלה, הסימון נשמר רק במכשיר הזה'; lsSet(); }
+  } else lsSet();
+}
+
+document.querySelectorAll('.who button').forEach(b=>b.onclick=()=>{ person=b.dataset.p; filter='all'; try{ history.replaceState(null,'','#'+person); }catch{} render(); });
+$('copy').onclick=()=>{
+  const P=PEOPLE[person];
+  const txt=(person==='maya'?'מאיה':'דור')+'\n'+P.cats.map(([n,its])=>n+'\n'+its.map(([id,nm,q,bag])=>(state[id]?'✓ ':'☐ ')+nm+' ×'+q+' ('+BAGS[bag]+')').join('\n')).join('\n\n');
+  const done=()=>{ $('copy').textContent='הועתק'; setTimeout(()=>$('copy').textContent='העתקת הרשימה',1500); };
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done)); else fallbackCopy(txt,done);
+};
+function fallbackCopy(t,done){ const ta=document.createElement('textarea'); ta.value=t; document.body.append(ta); ta.select(); try{ document.execCommand('copy'); done(); }catch{} ta.remove(); }
+$('reset').onclick=()=>{ $('confirm-text').textContent='לאפס את כל הסימונים של '+(person==='maya'?'מאיה':'דור')+'?'; $('confirm').hidden=false; };
+$('reset-no').onclick=()=>{ $('confirm').hidden=true; };
+$('reset-yes').onclick=async()=>{
+  $('confirm').hidden=true;
+  const ids=items(person).map(i=>i[0]).filter(id=>state[id]);
+  ids.forEach(id=>state[id]=false); render();
+  if(db){ for(const id of ids){ try{ await db.collection('packed').doc(id).set({done:false}); }catch{} } } else lsSet();
+};
+
+if(['maya','dor'].includes(location.hash.slice(1))) person=location.hash.slice(1);
+render();
+
+(async()=>{
+  const timer=setTimeout(()=>{ if(!db) $('sync').textContent='נשמר רק במכשיר הזה'; },10000);
+  try{
+    db = window.claude ? await window.claude.use('db') : null;
+  }catch{ db=null; }
+  if(!db){ clearTimeout(timer); $('sync').textContent='נשמר רק במכשיר הזה'; return; }
+  db.collection('packed').onSnapshot(snap=>{
+    clearTimeout(timer);
+    const s={}; snap.docs.forEach(d=>{ const v=d.data(); if(v&&v.done) s[d.id]=true; });
+    state=s; render();
+    $('sync').textContent='משותף לדור ולמאיה';
+  }, ()=>{ clearTimeout(timer); $('sync').textContent='אין חיבור, הסימונים נשמרים רק במכשיר הזה'; db=null; });
+})();
+</script>
+
+</body>
+</html>
